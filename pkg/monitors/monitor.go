@@ -30,7 +30,9 @@ func GetOsMonitor(log *logrus.Logger, goos string) (*OsMonitor, error) {
 	case "linux":
 		stateContainer = &LinuxStateCollector{}
 	case "darwin":
+		//stateContainer = &DarwinStateCollector{}
 	case "windows":
+		stateContainer = &WindowsStateCollector{}
 	default:
 		return nil, fmt.Errorf("unsupported os: %s, only linux darwin and windows are supported", goos)
 	}
