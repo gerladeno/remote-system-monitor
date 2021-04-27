@@ -2,11 +2,16 @@ package monitors
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"sync"
 	"time"
 )
+
+const initialWindowLengthSeconds = 5
+
+var ErrNotCalculated = errors.New("err this average is not yet calculated")
 
 type StateCollector interface {
 	GetCurrentState(ctx context.Context) (*State, error)
@@ -18,7 +23,9 @@ type OsMonitor struct {
 	stateCollector StateCollector
 	states         []*State
 	averages       map[int]*State
+	avgRequired    map[int]struct{}
 	maxM           int
+	mxAR           sync.RWMutex
 	mxAvg          sync.RWMutex
 	mxMaxM         sync.RWMutex
 	mxStates       sync.RWMutex
@@ -39,8 +46,9 @@ func GetOsMonitor(log *logrus.Logger, goos string) (*OsMonitor, error) {
 	monitor := OsMonitor{
 		log:            log.WithField("system", "monitor"),
 		stateCollector: stateContainer,
-		maxM:           12,
+		maxM:           initialWindowLengthSeconds,
 		averages:       make(map[int]*State),
+		avgRequired:    make(map[int]struct{}),
 	}
 	return &monitor, nil
 }
@@ -60,11 +68,31 @@ func (om *OsMonitor) Run(ctx context.Context) {
 }
 
 func (om *OsMonitor) AddMAverage(m int) {
-	om.mxMaxM.Lock()
-	if m > om.maxM {
-		om.maxM = m
+	om.mxAR.RLock()
+	_, ok := om.avgRequired[m]
+	om.mxAR.RUnlock()
+	if !ok {
+		om.mxAR.Lock()
+		om.avgRequired[m] = struct{}{}
+		om.mxAR.Unlock()
+
+		om.mxMaxM.Lock()
+		if m > om.maxM {
+			om.maxM = m
+		}
+		om.mxMaxM.Unlock()
 	}
-	om.mxMaxM.Unlock()
+}
+
+func (om *OsMonitor) GetMAverage(m int) (*State, error) {
+	om.mxAvg.RLock()
+	var avg State
+	_, ok := om.averages[m]
+	if !ok {
+		return nil, ErrNotCalculated
+	}
+	avg = *om.averages[m]
+	return &avg, nil
 }
 
 func (om *OsMonitor) startCollector(ctx context.Context) {
@@ -111,18 +139,27 @@ func (om *OsMonitor) startCalculator(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-scheduler.C:
-			om.mxAvg.Lock()
-			for k, _ := range om.averages {
+			om.mxAR.Lock()
+			for k, _ := range om.avgRequired {
 				switch {
-				case k < len(om.states):
+				case k > len(om.states):
 					continue
 				case k == len(om.states):
+					om.mxAvg.Lock()
 					om.averages[k] = calcAvg(om.states)
+					om.mxAvg.Unlock()
 				default:
-					om.averages[k] = calcAvg(om.states)
+					om.mxAvg.Lock()
+					if _, ok := om.averages[k]; !ok {
+						om.averages[k] = calcAvg(om.states)
+					} else {
+						startIdx := len(om.states) - k
+						om.averages[k] = calcIncrementAvg(om.states[startIdx-1:], om.averages[k])
+					}
+					om.mxAvg.Unlock()
 				}
 			}
-			om.mxAvg.Unlock()
+			om.mxAR.Unlock()
 
 			om.mxAvg.RLock()
 			om.log.Debug("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
@@ -133,21 +170,4 @@ func (om *OsMonitor) startCalculator(ctx context.Context) {
 			om.mxAvg.RUnlock()
 		}
 	}
-}
-
-func calcAvg(states []*State) *State {
-	state := State{}
-	state.LoadAverage.One = avgFloat64(states, func(state *State) float64 { return state.LoadAverage.One })
-	state.LoadAverage.Five = avgFloat64(states, func(state *State) float64 { return state.LoadAverage.Five })
-	state.LoadAverage.Fifteen = avgFloat64(states, func(state *State) float64 { return state.LoadAverage.Fifteen })
-	return &state
-}
-
-func avgFloat64(states []*State, fn func(state *State) float64) float64 {
-	var avg float64
-	for _, state := range states {
-		avg += fn(state)
-	}
-	avg /= float64(len(states))
-	return avg
 }

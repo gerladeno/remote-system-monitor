@@ -5,14 +5,16 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"remote-system-monitor/api"
 	"remote-system-monitor/pkg/monitors"
+	"sync"
 	"syscall"
 )
 
 var (
 	serverPort int
-	version = "0.0.0"
-	goos = "linux"
+	version    = "0.0.0"
+	goos       = "linux"
 )
 
 func init() {
@@ -25,6 +27,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("err initing monitor: %s", err)
 	}
+
+	server := api.NewRPCServer(log, osMonitor, serverPort, "tcp", version)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -42,5 +46,18 @@ func main() {
 		cancel()
 	}()
 
-	osMonitor.Run(ctx)
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		osMonitor.Run(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		if err = server.Start(ctx); err != nil {
+			log.Fatalf("err starting grpc server, %s", err)
+		}
+	}()
+	wg.Wait()
 }

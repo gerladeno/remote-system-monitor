@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package monitorApiv1;
+option go_package = "./monitorApiv1";
+
+message SignUpRequest {
+  int32 Version = 1;
+  int32 ReportPeriod = 2;
+  int32 MeanPeriod = 3;
+}
+
+message SignUpResponse {
+}
+
+service SignUpHandler {
+  rpc SignUp (SignUpRequest) returns (SignUpResponse);
+}

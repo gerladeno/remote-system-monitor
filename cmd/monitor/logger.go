@@ -2,7 +2,7 @@ package main
 
 import "github.com/sirupsen/logrus"
 
-func getLogger(lvl string) *logrus.Logger{
+func getLogger(lvl string) *logrus.Logger {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	level, err := logrus.ParseLevel(lvl)

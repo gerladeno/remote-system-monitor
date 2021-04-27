@@ -25,7 +25,7 @@ func (wcs *WindowsStateCollector) GetLoadAverage(ctx context.Context) (LoadAvera
 	var load_avg_15m float64 = 0
 
 	la := LoadAverage{}
-	out, err := exec.Command("cmd", "/k", "wmic cpu get LoadPercentage -value").Output()
+	out, err := exec.CommandContext(ctx, "cmd", "/k", "wmic cpu get LoadPercentage -value").Output()
 	if err != nil {
 		return la, err
 	}
