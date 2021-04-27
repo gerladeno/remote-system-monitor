@@ -30,22 +30,17 @@ func GetOsMonitor(log *logrus.Logger, goos string) (*OsMonitor, error) {
 	case "linux":
 		stateContainer = &LinuxStateCollector{}
 	case "darwin":
-		//stateContainer = &DarwinStateCollector{}
+		stateContainer = &DarwinStateCollector{}
 	case "windows":
 		stateContainer = &WindowsStateCollector{}
 	default:
 		return nil, fmt.Errorf("unsupported os: %s, only linux darwin and windows are supported", goos)
 	}
-	tmp := make(map[int]*State)
-	tmp[2] = nil
-	tmp[5] = nil
-	tmp[11] = nil
 	monitor := OsMonitor{
 		log:            log.WithField("system", "monitor"),
 		stateCollector: stateContainer,
 		maxM:           12,
-		//averages:       make(map[int]*State),
-		averages:       tmp,
+		averages:       make(map[int]*State),
 	}
 	return &monitor, nil
 }
