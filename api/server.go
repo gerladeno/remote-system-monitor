@@ -9,6 +9,7 @@ import (
 	"remote-system-monitor/api/monitorApiv1"
 	"remote-system-monitor/pkg/monitors"
 	"strconv"
+	"time"
 )
 
 //go:generate protoc -I=proto/ proto/signup_v1.proto --go_out=. --go-grpc_out=require_unimplemented_servers=false:.
@@ -59,7 +60,37 @@ func (r *RPCServer) Stop() {
 	r.server.Stop()
 }
 
-func (r *RPCServer) SignUp(ctx context.Context, request *monitorApiv1.SignUpRequest) (*monitorApiv1.SignUpResponse, error) {
-	r.monitor.AddMAverage(int(request.GetMeanPeriod()))
-	return &monitorApiv1.SignUpResponse{}, nil
+func (r *RPCServer) SignUp(request *monitorApiv1.SignUpRequest, stream monitorApiv1.SignUpHandler_SignUpServer) error {
+	m := int(request.GetMeanPeriod())
+	r.monitor.AddMAverage(m)
+	timer := time.NewTicker(time.Duration(request.GetReportPeriod()) * time.Second)
+LOOP:
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case <-timer.C:
+			avg, err := r.monitor.GetMAverage(m)
+			if err != nil {
+				r.log.Warn("err receiving data from monitor: ", err)
+				continue
+			}
+			err = stream.Send(&monitorApiv1.SignUpResponse{State: state2Pb(avg)})
+			if err != nil {
+				break LOOP
+			}
+		}
+	}
+	return nil
+}
+
+func state2Pb(state *monitors.State) *monitorApiv1.State {
+	pbState := monitorApiv1.State{
+		LoadAverage: &monitorApiv1.LoadAverage{
+			One:     state.LoadAverage.One,
+			Five:    state.LoadAverage.Five,
+			Fifteen: state.LoadAverage.Fifteen,
+		},
+	}
+	return &pbState
 }

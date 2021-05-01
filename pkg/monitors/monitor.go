@@ -86,6 +86,7 @@ func (om *OsMonitor) AddMAverage(m int) {
 
 func (om *OsMonitor) GetMAverage(m int) (*State, error) {
 	om.mxAvg.RLock()
+	defer om.mxAvg.RUnlock()
 	var avg State
 	_, ok := om.averages[m]
 	if !ok {
@@ -103,6 +104,7 @@ func (om *OsMonitor) startCollector(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-scheduler.C:
+			started := time.Now()
 			state, err := om.stateCollector.GetCurrentState(ctx)
 			if err != nil {
 				om.log.Warn("err receiving stats: ", err)
@@ -118,8 +120,9 @@ func (om *OsMonitor) startCollector(ctx context.Context) {
 			}
 			om.mxStates.Unlock()
 			om.mxMaxM.RUnlock()
-			om.mxStates.RLock()
 
+			om.mxStates.RLock()
+			om.log.Debugf("collect: %d microseconds", time.Since(started).Microseconds())
 			om.log.Debug("_____________________________________")
 			for _, state := range om.states {
 				om.log.Debugf(state.String())
@@ -139,7 +142,8 @@ func (om *OsMonitor) startCalculator(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-scheduler.C:
-			om.mxAR.Lock()
+			started := time.Now()
+			om.mxAR.RLock()
 			for k, _ := range om.avgRequired {
 				switch {
 				case k > len(om.states):
@@ -159,9 +163,10 @@ func (om *OsMonitor) startCalculator(ctx context.Context) {
 					om.mxAvg.Unlock()
 				}
 			}
-			om.mxAR.Unlock()
+			om.mxAR.RUnlock()
 
 			om.mxAvg.RLock()
+			om.log.Debugf("calculate: %d microseconds", time.Since(started).Microseconds())
 			om.log.Debug("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 			for k, average := range om.averages {
 				om.log.Debugf("%d: %s", k, average.String())
