@@ -8,7 +8,6 @@ service SignUpHandler {
 }
 
 message SignUpRequest {
-  int32 Version = 1;
   int32 ReportPeriod = 2;
   int32 MeanPeriod = 3;
 }

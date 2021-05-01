@@ -122,13 +122,13 @@ func (om *OsMonitor) startCollector(ctx context.Context) {
 			om.mxMaxM.RUnlock()
 
 			om.mxStates.RLock()
-			om.log.Debugf("collect: %d microseconds", time.Since(started).Microseconds())
-			om.log.Debug("_____________________________________")
+			om.log.Tracef("collect: %d microseconds", time.Since(started).Microseconds())
+			om.log.Trace("_____________________________________")
 			for _, state := range om.states {
-				om.log.Debugf(state.String())
+				om.log.Tracef(state.String())
 			}
-			om.log.Debug("len(states) == ", len(om.states))
-			om.log.Debug("_____________________________________")
+			om.log.Trace("len(states) == ", len(om.states))
+			om.log.Trace("_____________________________________")
 			om.mxStates.RUnlock()
 		}
 	}
@@ -166,12 +166,12 @@ func (om *OsMonitor) startCalculator(ctx context.Context) {
 			om.mxAR.RUnlock()
 
 			om.mxAvg.RLock()
-			om.log.Debugf("calculate: %d microseconds", time.Since(started).Microseconds())
-			om.log.Debug("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+			om.log.Tracef("calculate: %d microseconds", time.Since(started).Microseconds())
+			om.log.Trace("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 			for k, average := range om.averages {
-				om.log.Debugf("%d: %s", k, average.String())
+				om.log.Tracef("%d: %s", k, average.String())
 			}
-			om.log.Debug("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+			om.log.Trace("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 			om.mxAvg.RUnlock()
 		}
 	}

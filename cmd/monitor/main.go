@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"remote-system-monitor/api"
+	"remote-system-monitor/cmd"
 	"remote-system-monitor/pkg/monitors"
 	"sync"
 	"syscall"
@@ -13,22 +14,27 @@ import (
 
 var (
 	serverPort int
+	logLevel   string
+	network    string
 	version    = "0.0.0"
 	goos       = "linux"
 )
 
 func init() {
 	flag.IntVar(&serverPort, "p", 3000, "port to start gRPC server")
+	flag.StringVar(&logLevel, "l", "TRACE", "log level. Accepted values: panic, fatal, error, warn, warning, info, debug, trace. Case insensitive.")
+	flag.StringVar(&network, "n", "tcp", "specify protocol for server to run: tcp (default) or udp")
 }
 
 func main() {
-	log := getLogger(os.Getenv("LOG_LEVEL"))
+	flag.Parse()
+	log := cmd.GetLogger(logLevel)
 	osMonitor, err := monitors.GetOsMonitor(log, goos)
 	if err != nil {
 		log.Fatalf("err initing monitor: %s", err)
 	}
 
-	server := api.NewRPCServer(log, osMonitor, serverPort, "tcp", version)
+	server := api.NewRPCServer(log, osMonitor, serverPort, network, version)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
