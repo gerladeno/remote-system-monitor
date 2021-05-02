@@ -105,7 +105,11 @@ func (om *OsMonitor) RemoveMAverage(m int) {
 					max = k
 				}
 			}
-			om.maxM = max
+			if max > initialWindowLengthSeconds {
+				om.maxM = max
+			} else {
+				om.maxM = initialWindowLengthSeconds
+			}
 			om.mxMaxM.Unlock()
 		}
 	}
