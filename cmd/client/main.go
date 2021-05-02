@@ -57,6 +57,7 @@ func main() {
 		}
 		if err != nil {
 			log.Warnf("err receiving streaming data: %s", err)
+			return
 		}
 		fmt.Printf("[%s][%s]: %s avged by %d seconds\n", clientId, time.Now().Format("2006-01-02 15:04:05"), res.GetState().String(), meanPeriod)
 	}

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-//Not really use atm
+//Not really used atm
 type TestMonitor struct {
 }
 

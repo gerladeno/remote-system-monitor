@@ -14,8 +14,9 @@ const initialWindowLengthSeconds = 5
 var ErrNotCalculated = errors.New("err this average is not yet calculated")
 
 type StateCollector interface {
-	GetCurrentState(ctx context.Context) (*State, error)
-	GetLoadAverage(ctx context.Context) (LoadAverage, error)
+	GetCurrentState(ctx context.Context) *State
+	//GetLoadAverage(ctx context.Context) (LoadAverage, error)
+	//GetCPULoadAndMem(ctx context.Context) (CPULoad, Mem, error)
 }
 
 type OsMonitor struct {
@@ -23,7 +24,7 @@ type OsMonitor struct {
 	stateCollector StateCollector
 	states         []*State
 	averages       map[int]*State
-	avgRequired    map[int]struct{}
+	avgRequired    map[int]int
 	maxM           int
 	mxAR           sync.RWMutex
 	mxAvg          sync.RWMutex
@@ -35,11 +36,11 @@ func GetOsMonitor(log *logrus.Logger, goos string) (*OsMonitor, error) {
 	var stateContainer StateCollector
 	switch goos {
 	case "linux":
-		stateContainer = &LinuxStateCollector{}
+		stateContainer = &LinuxStateCollector{log: log}
 	case "darwin":
-		stateContainer = &DarwinStateCollector{}
+		stateContainer = &DarwinStateCollector{log: log}
 	case "windows":
-		stateContainer = &WindowsStateCollector{}
+		stateContainer = &WindowsStateCollector{log: log}
 	default:
 		return nil, fmt.Errorf("unsupported os: %s, only linux darwin and windows are supported", goos)
 	}
@@ -48,7 +49,7 @@ func GetOsMonitor(log *logrus.Logger, goos string) (*OsMonitor, error) {
 		stateCollector: stateContainer,
 		maxM:           initialWindowLengthSeconds,
 		averages:       make(map[int]*State),
-		avgRequired:    make(map[int]struct{}),
+		avgRequired:    make(map[int]int),
 	}
 	return &monitor, nil
 }
@@ -68,20 +69,47 @@ func (om *OsMonitor) Run(ctx context.Context) {
 }
 
 func (om *OsMonitor) AddMAverage(m int) {
-	om.mxAR.RLock()
+	om.mxAR.Lock()
 	_, ok := om.avgRequired[m]
-	om.mxAR.RUnlock()
-	if !ok {
-		om.mxAR.Lock()
-		om.avgRequired[m] = struct{}{}
-		om.mxAR.Unlock()
-
-		om.mxMaxM.Lock()
-		if m > om.maxM {
-			om.maxM = m
-		}
-		om.mxMaxM.Unlock()
+	if ok {
+		om.avgRequired[m] += 1
+	} else {
+		om.avgRequired[m] = 1
 	}
+	om.mxAR.Unlock()
+
+	om.mxMaxM.Lock()
+	if m > om.maxM {
+		om.maxM = m
+	}
+	om.mxMaxM.Unlock()
+}
+
+func (om *OsMonitor) RemoveMAverage(m int) {
+	om.mxAR.Lock()
+	_, ok := om.avgRequired[m]
+	if ok {
+		if om.avgRequired[m] > 1 {
+			om.avgRequired[m] -= 1
+		} else {
+			delete(om.avgRequired, m)
+			om.mxAvg.Lock()
+			delete(om.averages, m)
+			om.mxAvg.Unlock()
+
+			// not sure if it's necessary
+			om.mxMaxM.Lock()
+			max := 0
+			for k := range om.avgRequired {
+				if k > max {
+					max = k
+				}
+			}
+			om.maxM = max
+			om.mxMaxM.Unlock()
+		}
+	}
+	om.mxAR.Unlock()
 }
 
 func (om *OsMonitor) GetMAverage(m int) (*State, error) {
@@ -105,17 +133,15 @@ func (om *OsMonitor) startCollector(ctx context.Context) {
 			return
 		case <-scheduler.C:
 			started := time.Now()
-			state, err := om.stateCollector.GetCurrentState(ctx)
-			if err != nil {
-				om.log.Warn("err receiving stats: ", err)
-				continue
-			}
+			state := om.stateCollector.GetCurrentState(ctx)
 			om.mxStates.Lock()
 			om.mxMaxM.RLock()
 			if len(om.states) < om.maxM {
 				om.states = append(om.states, state)
 			} else {
-				om.states = om.states[1:]
+				// if maxM decreased
+				idx := len(om.states) - om.maxM + 1
+				om.states = om.states[idx:]
 				om.states = append(om.states, state)
 			}
 			om.mxStates.Unlock()
@@ -144,7 +170,7 @@ func (om *OsMonitor) startCalculator(ctx context.Context) {
 		case <-scheduler.C:
 			started := time.Now()
 			om.mxAR.RLock()
-			for k, _ := range om.avgRequired {
+			for k := range om.avgRequired {
 				switch {
 				case k > len(om.states):
 					continue

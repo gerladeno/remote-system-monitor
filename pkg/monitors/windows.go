@@ -2,17 +2,31 @@ package monitors
 
 import (
 	"context"
+	"github.com/sirupsen/logrus"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type WindowsStateCollector struct {
+	log *logrus.Logger
 }
 
-func (wsc *WindowsStateCollector) GetCurrentState(ctx context.Context) (*State, error) {
-	la, err := wsc.GetLoadAverage(ctx)
-	return &State{LoadAverage: la}, err
+func (wsc *WindowsStateCollector) GetCurrentState(ctx context.Context) *State {
+	var (
+		la LoadAverage
+		wg sync.WaitGroup
+	)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var err error
+		if la, err = wsc.GetLoadAverage(ctx); err != nil {
+			wsc.log.Warn("err getting loadAverage: ", err)
+		}
+	}()
+	return &State{LoadAverage: la}
 }
 
 func (wcs *WindowsStateCollector) GetLoadAverage(ctx context.Context) (LoadAverage, error) {

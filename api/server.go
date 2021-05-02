@@ -16,6 +16,7 @@ import (
 
 type Monitor interface {
 	AddMAverage(m int)
+	RemoveMAverage(m int)
 	GetMAverage(m int) (*monitors.State, error)
 }
 
@@ -63,6 +64,7 @@ func (r *RPCServer) Stop() {
 func (r *RPCServer) SignUp(request *monitorApiv1.SignUpRequest, stream monitorApiv1.SignUpHandler_SignUpServer) error {
 	m := int(request.GetMeanPeriod())
 	r.monitor.AddMAverage(m)
+	defer r.monitor.RemoveMAverage(m)
 	timer := time.NewTicker(time.Duration(request.GetReportPeriod()) * time.Second)
 LOOP:
 	for {
@@ -90,6 +92,16 @@ func state2Pb(state *monitors.State) *monitorApiv1.State {
 			One:     state.LoadAverage.One,
 			Five:    state.LoadAverage.Five,
 			Fifteen: state.LoadAverage.Fifteen,
+		},
+		CPULoad: &monitorApiv1.CPULoad{
+			User:   state.CPULoad.User,
+			System: state.CPULoad.System,
+			Idle:   state.CPULoad.Idle,
+		},
+		Mem: &monitorApiv1.Mem{
+			Total: state.Mem.Total,
+			Free:  state.Mem.Free,
+			Used:  state.Mem.Used,
 		},
 	}
 	return &pbState

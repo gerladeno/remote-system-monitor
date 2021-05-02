@@ -6,10 +6,12 @@ import (
 
 type State struct {
 	LoadAverage LoadAverage
+	CPULoad     CPULoad
+	Mem         Mem
 }
 
 func (s *State) String() string {
-	return s.LoadAverage.String()
+	return fmt.Sprintf("LoadAvg [%s] CPU [%s] Mem [%s]", s.LoadAverage.String(), s.CPULoad.String(), s.Mem.String())
 }
 
 type LoadAverage struct {
@@ -19,5 +21,25 @@ type LoadAverage struct {
 }
 
 func (la *LoadAverage) String() string {
-	return fmt.Sprintf("%g %g %g", la.One, la.Five, la.Fifteen)
+	return fmt.Sprintf("One: %g Five: %g Fifteen: %g", la.One, la.Five, la.Fifteen)
+}
+
+type CPULoad struct {
+	User   float64
+	System float64
+	Idle   float64
+}
+
+func (cpu *CPULoad) String() string {
+	return fmt.Sprintf("User: %g System: %g Idle: %g", cpu.User, cpu.System, cpu.Idle)
+}
+
+type Mem struct {
+	Total float64
+	Free  float64
+	Used  float64
+}
+
+func (m *Mem) String() string {
+	return fmt.Sprintf("Total: %g Free: %g Used: %g", m.Total, m.Free, m.Used)
 }

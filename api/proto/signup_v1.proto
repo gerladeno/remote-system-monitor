@@ -18,10 +18,24 @@ message SignUpResponse {
 
 message State {
   LoadAverage LoadAverage = 1;
+  CPULoad CPULoad = 2;
+  Mem Mem = 3;
 }
 
 message LoadAverage {
   double One = 1;
   double Five = 2;
   double Fifteen = 3;
+}
+
+message CPULoad {
+  double User = 1;
+  double System = 2;
+  double Idle = 3;
+}
+
+message Mem {
+  double Total = 1;
+  double Free = 2;
+  double Used = 3;
 }
