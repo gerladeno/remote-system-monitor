@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
-	"remote-system-monitor/api"
-	"remote-system-monitor/cmd"
+	"remote-system-monitor/pkg/api"
+	"remote-system-monitor/pkg/logging"
 	"remote-system-monitor/pkg/monitors"
 	"sync"
 	"syscall"
@@ -28,7 +29,13 @@ func init() {
 
 func main() {
 	flag.Parse()
-	log := cmd.GetLogger(logLevel)
+
+	if flag.Arg(0) == "version" {
+		fmt.Println(version)
+		return
+	}
+
+	log := logging.GetLogger(logLevel)
 	osMonitor, err := monitors.GetOsMonitor(log, goos)
 	if err != nil {
 		log.Fatalf("err initing monitor: %s", err)

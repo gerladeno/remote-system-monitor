@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  monitor:
+    build:
+      context: .
+      dockerfile: build/monitor/Dockerfile
+    networks:
+      - monitor
+    entrypoint: ["./monitor", "-p", "3003", "-l", "debug"]
+  client1:
+    build:
+      context: .
+      dockerfile: build/client/Dockerfile
+    networks:
+      - monitor
+    entrypoint: [ "./client", "-p", "3003", "-h", "monitor", "-i", "0001", "-m", "3", "-n", "3"]
+    depends_on:
+      - monitor
+    restart: on-failure
+  client2:
+    build:
+      context: .
+      dockerfile: build/client/Dockerfile
+    networks:
+      - monitor
+    entrypoint: [ "./client", "-p", "3003", "-h", "monitor", "-i", "0002", "-m", "2", "-n", "10" ]
+    depends_on:
+      - monitor
+    restart: on-failure
+networks:
+  monitor:

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"google.golang.org/grpc"
 	"io"
-	"remote-system-monitor/api/monitorApiv1"
-	"remote-system-monitor/cmd"
+	"remote-system-monitor/pkg/api/monitorApiv1"
+	"remote-system-monitor/pkg/logging"
 	"strconv"
 	"time"
 )
@@ -30,7 +30,7 @@ func init() {
 
 func main() {
 	flag.Parse()
-	log := cmd.GetLogger("DEBUG")
+	log := logging.GetLogger("DEBUG")
 	client, cc, err := StartClient(serverHost, serverPort)
 	if err != nil {
 		panic(err)

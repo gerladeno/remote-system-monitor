@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"net"
-	"remote-system-monitor/api/monitorApiv1"
+	"remote-system-monitor/pkg/api/monitorApiv1"
 	"remote-system-monitor/pkg/monitors"
 	"strconv"
 	"time"

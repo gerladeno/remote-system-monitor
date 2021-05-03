@@ -1,19 +1,22 @@
+// +build linux
+
 package monitors
 
 import (
 	"context"
 	"github.com/sirupsen/logrus"
+	"math"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
 )
 
-type LinuxStateCollector struct {
+type StateCollector struct {
 	log *logrus.Logger
 }
 
-func (lsc *LinuxStateCollector) GetCurrentState(ctx context.Context) *State {
+func (lsc *StateCollector) GetCurrentState(ctx context.Context) *State {
 	var (
 		la  LoadAverage
 		cpu CPULoad
@@ -23,72 +26,130 @@ func (lsc *LinuxStateCollector) GetCurrentState(ctx context.Context) *State {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var err error
-		if la, err = lsc.GetLoadAverage(ctx); err != nil {
-			lsc.log.Warn("err getting loadAverage: ", err)
-		}
+		la = lsc.GetLoadAverage(ctx)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var err error
-		if cpu, mem, err = lsc.GetCPULoadAndMem(ctx); err != nil {
-			lsc.log.Warn("err getting cpu and mem: ", err)
-		}
+		cpu = lsc.GetCPULoad(ctx)
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		mem = lsc.GetMem(ctx)
 	}()
 	wg.Wait()
 	return &State{LoadAverage: la, CPULoad: cpu, Mem: mem}
 }
 
-func (lsc *LinuxStateCollector) GetLoadAverage(ctx context.Context) (LoadAverage, error) {
+func (lsc *StateCollector) GetLoadAverage(ctx context.Context) LoadAverage {
 	la := LoadAverage{}
 	out, err := exec.CommandContext(ctx, "cat", "/proc/loadavg").Output()
 	if err != nil {
-		return la, err
+		lsc.log.Warn("err processing la: ", err)
+		return la
 	}
 	elems := strings.Split(string(out), " ")
 	la.One, err = strconv.ParseFloat(elems[0], 64)
 	if err != nil {
-		return la, err
+		lsc.log.Warn("err processing la: ", err)
+		return la
 	}
 	la.Five, err = strconv.ParseFloat(elems[1], 64)
 	if err != nil {
-		return la, err
+		lsc.log.Warn("err processing la: ", err)
+		return la
 	}
 	la.Fifteen, err = strconv.ParseFloat(elems[2], 64)
 	if err != nil {
-		return la, err
+		lsc.log.Warn("err processing la: ", err)
+		return la
 	}
-	return la, nil
+	return la
 }
 
-func (lsc *LinuxStateCollector) GetCPULoadAndMem(ctx context.Context) (CPULoad, Mem, error) {
+func (lsc *StateCollector) GetCPULoad(ctx context.Context) CPULoad {
 	cpu := CPULoad{}
-	mem := Mem{}
-	out, err := exec.CommandContext(ctx, "top", "-bn1").Output()
+	out, err := exec.CommandContext(ctx, "head", "-n1", "/proc/stat").Output()
 	if err != nil {
-		return CPULoad{}, Mem{}, err
+		lsc.log.Warn("err processing cpu: ", err)
+		return cpu
 	}
-	lines := strings.SplitN(string(out), "\n", 5)
-	cpuElems := strings.Split(strings.Replace(lines[2], ",", ".", -1), " ")
-	memElems := strings.Split(strings.Replace(lines[3], ",", ".", -1), " ")
-	if cpu.User, err = strconv.ParseFloat(cpuElems[1], 64); err != nil {
-		return CPULoad{}, Mem{}, err
+	values := strings.Fields(strings.TrimSpace(string(out)))
+	if len(values) != 11 {
+		lsc.log.Warnf("err processing cpu: expected 11 elements in a string, got %d: %s", len(values), string(out))
+		return cpu
 	}
-	if cpu.System, err = strconv.ParseFloat(cpuElems[4], 64); err != nil {
-		return CPULoad{}, Mem{}, err
+	user, err := strconv.Atoi(values[1])
+	if err != nil {
+		lsc.log.Warn("err processing cpu: ", err)
+		return cpu
 	}
-	if cpu.Idle, err = strconv.ParseFloat(cpuElems[9], 64); err != nil {
-		return CPULoad{}, Mem{}, err
+	nice, err := strconv.Atoi(values[2])
+	if err != nil {
+		lsc.log.Warn("err processing cpu: ", err)
+		return cpu
 	}
-	if mem.Total, err = strconv.ParseFloat(memElems[4], 64); err != nil {
-		return cpu, Mem{}, err
+	system, err := strconv.Atoi(values[3])
+	if err != nil {
+		lsc.log.Warn("err processing cpu: ", err)
+		return cpu
 	}
-	if mem.Free, err = strconv.ParseFloat(memElems[8], 64); err != nil {
-		return cpu, Mem{}, err
+	idle, err := strconv.Atoi(values[4])
+	if err != nil {
+		lsc.log.Warn("err processing cpu: ", err)
+		return cpu
 	}
-	if mem.Used, err = strconv.ParseFloat(memElems[11], 64); err != nil {
-		return cpu, Mem{}, err
+	iowait, err := strconv.Atoi(values[5])
+	if err != nil {
+		lsc.log.Warn("err processing cpu: ", err)
+		return cpu
 	}
-	return cpu, mem, nil
+	irq, err := strconv.Atoi(values[6])
+	if err != nil {
+		lsc.log.Warn("err processing cpu: ", err)
+		return cpu
+	}
+	softirq, err := strconv.Atoi(values[7])
+	if err != nil {
+		lsc.log.Warn("err processing cpu: ", err)
+		return cpu
+	}
+	sum := float64(user + nice + system + idle + iowait + irq + softirq)
+	cpu.User = math.Round(float64(user) / sum * 1000) / 10
+	cpu.System = math.Round(float64(system) / sum * 1000) / 10
+	cpu.Idle = math.Round(float64(idle) / sum * 1000) / 10
+	return cpu
+}
+
+func (lsc *StateCollector) GetMem(ctx context.Context) Mem {
+	mem := Mem{}
+	out, err := exec.CommandContext(ctx, "free").Output()
+	if err != nil {
+		lsc.log.Warn("err processing mem: ", err)
+		return mem
+	}
+	lines := strings.Split(string(out), "\n")
+	if len(lines) < 3 {
+		lsc.log.Warn("err unexpected free output")
+		return mem
+	}
+	memElems := strings.Fields(strings.TrimSpace(lines[1]))
+	var tmp float64
+	if tmp, err = strconv.ParseFloat(memElems[1], 64); err != nil {
+		lsc.log.Warn("err processing mem: ", err)
+		return mem
+	}
+	mem.Total = math.Round(10 * tmp / 1024) / 10
+	if tmp, err = strconv.ParseFloat(memElems[2], 64); err != nil {
+		lsc.log.Warn("err processing mem: ", err)
+		return mem
+	}
+	mem.Used = math.Round(10 * tmp / 1024) / 10
+	if tmp, err = strconv.ParseFloat(memElems[3], 64); err != nil {
+		lsc.log.Warn("err processing mem: ", err)
+		return mem
+	}
+	mem.Free = math.Round(10 * tmp / 1024) / 10
+	return mem
 }

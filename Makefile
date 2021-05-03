@@ -1,12 +1,13 @@
-version := "0.0.0"
+version := "0.0.2"
+LDFLAGS := -X main.version=$(version)
 
 gen:
 	go generate ./api/
 
-build_all:
+build_all: gen
 	./make.sh $(version)
 
-run:
+run: gen
 	GOOS=linux go run ./cmd/monitor -p 3002
 
 client1:
@@ -18,3 +19,8 @@ client2:
 client3:
 	GOOS=linux go run ./cmd/client -p 3002 -m 8 -n 8 -i "0003"
 
+docker_build: gen
+	docker-compose build
+
+docker_run:
+	docker-compose up

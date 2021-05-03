@@ -1,3 +1,5 @@
+// +build darwin
+
 package monitors
 
 import (
@@ -9,11 +11,11 @@ import (
 	"sync"
 )
 
-type DarwinStateCollector struct {
+type StateCollector struct {
 	log *logrus.Logger
 }
 
-func (dsc *DarwinStateCollector) GetCurrentState(ctx context.Context) *State {
+func (dsc *StateCollector) GetCurrentState(ctx context.Context) *State {
 	var (
 		la  LoadAverage
 		cpu CPULoad
@@ -40,7 +42,7 @@ func (dsc *DarwinStateCollector) GetCurrentState(ctx context.Context) *State {
 	return &State{LoadAverage: la, CPULoad: cpu, Mem: mem}
 }
 
-func (dsc *DarwinStateCollector) GetLoadAverage(ctx context.Context) (LoadAverage, error) {
+func (dsc *StateCollector) GetLoadAverage(ctx context.Context) (LoadAverage, error) {
 	la := LoadAverage{}
 	out, err := exec.CommandContext(ctx, "uptime").Output()
 	if err != nil {
@@ -63,7 +65,7 @@ func (dsc *DarwinStateCollector) GetLoadAverage(ctx context.Context) (LoadAverag
 	return la, nil
 }
 
-func (dsc *DarwinStateCollector) GetCPULoadAndMem(ctx context.Context) (CPULoad, Mem, error) {
+func (dsc *StateCollector) GetCPULoadAndMem(ctx context.Context) (CPULoad, Mem, error) {
 	cpu := CPULoad{}
 	mem := Mem{}
 	out, err := exec.CommandContext(ctx, "top", "-bn1").Output()
