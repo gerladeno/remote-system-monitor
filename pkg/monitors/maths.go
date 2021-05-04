@@ -32,7 +32,7 @@ func calcIncrementAvg(states []*State, avg *State) *State {
 
 func avgIncrementFloat64(states []*State, avgState *State, fn func(state *State) float64) float64 {
 	avg := fn(avgState) - fn(states[0])/float64(len(states)) + fn(states[len(states)-1])/float64(len(states))
-	return math.Round(avg*1000) / 1000
+	return math.Round(avg*100) / 100
 }
 
 func avgFloat64(states []*State, fn func(state *State) float64) float64 {
@@ -41,5 +41,5 @@ func avgFloat64(states []*State, fn func(state *State) float64) float64 {
 		avg += fn(state)
 	}
 	avg /= float64(len(states))
-	return math.Round(avg*1000) / 1000
+	return math.Round(avg*100) / 100
 }

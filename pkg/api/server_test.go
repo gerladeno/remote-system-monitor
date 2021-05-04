@@ -4,32 +4,26 @@ import (
 	"context"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"remote-system-monitor/pkg/api/monitorApiv1"
 	"remote-system-monitor/pkg/monitors"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 )
 
-//Not really used atm
-type TestMonitor struct {
-}
-
-func (t TestMonitor) AddMAverage(m int) {
-	panic("implement me")
-}
-
-func (t TestMonitor) GetMAverage(m int) (*monitors.State, error) {
-	panic("implement me")
-}
-
-//Not really a unit test atm
-func TestRPCServer(t *testing.T) {
+func TestRPCServer_SignUp(t *testing.T) {
+	var port = 3002
+	if testing.Short() {
+		t.Skip()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	log := logrus.New()
 	monitor, err := monitors.GetOsMonitor(log, "linux")
 	require.NoError(t, err)
-	r := NewRPCServer(log, monitor, 3002, "tcp", "version")
+	r := NewRPCServer(log, monitor, port, "tcp", "version")
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -38,12 +32,14 @@ func TestRPCServer(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	time.Sleep(6 * time.Second)
-	r.monitor.AddMAverage(4)
 	time.Sleep(2 * time.Second)
-	r.monitor.AddMAverage(5)
-	time.Sleep(2 * time.Second)
-	r.monitor.AddMAverage(10)
-
-	wg.Wait()
+	cc, err := grpc.Dial("localhost:"+strconv.Itoa(port), grpc.WithInsecure())
+	require.NoError(t, err)
+	client := monitorApiv1.NewSignUpHandlerClient(cc)
+	_, err = client.SignUp(ctx, &monitorApiv1.SignUpRequest{
+		ReportPeriod: int32(1),
+		MeanPeriod:   int32(1),
+	})
+	require.NoError(t, err)
+	cancel()
 }

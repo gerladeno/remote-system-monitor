@@ -7,6 +7,10 @@ gen:
 build_all: gen
 	./make.sh $(version)
 
+test:
+	go test ./pkg/monitors/ -race -count 100 -short
+	go test ./pkg/monitors/ ./pkg/api/ -race
+
 run: gen
 	GOOS=linux go run ./cmd/monitor -p 3002
 

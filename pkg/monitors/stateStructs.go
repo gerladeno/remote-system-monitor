@@ -31,7 +31,7 @@ type CPULoad struct {
 }
 
 func (cpu *CPULoad) String() string {
-	return fmt.Sprintf("User: %g System: %g Idle: %g", cpu.User, cpu.System, cpu.Idle)
+	return fmt.Sprintf("User: %g%%%% System: %g%%%% Idle: %g%%%%", cpu.User, cpu.System, cpu.Idle)
 }
 
 type Mem struct {
@@ -41,5 +41,5 @@ type Mem struct {
 }
 
 func (m *Mem) String() string {
-	return fmt.Sprintf("Total: %g Free: %g Used: %g", m.Total, m.Free, m.Used)
+	return fmt.Sprintf("Total MB: %g Free MB: %g Used MB: %g", m.Total, m.Free, m.Used)
 }

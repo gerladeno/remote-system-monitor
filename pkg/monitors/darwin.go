@@ -4,7 +4,9 @@ package monitors
 
 import (
 	"context"
+	"fmt"
 	"github.com/sirupsen/logrus"
+	"math"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -25,73 +27,78 @@ func (dsc *StateCollector) GetCurrentState(ctx context.Context) *State {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var err error
-		if la, err = dsc.GetLoadAverage(ctx); err != nil {
-			dsc.log.Warn("err getting loadAverage: ", err)
-		}
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var err error
-		if cpu, mem, err = dsc.GetCPULoadAndMem(ctx); err != nil {
-			dsc.log.Warn("err getting cpu and mem: ", err)
-		}
+		la, cpu, mem = dsc.GetLoadAverageCPULoadMem(ctx)
 	}()
 	wg.Wait()
 	return &State{LoadAverage: la, CPULoad: cpu, Mem: mem}
 }
 
-func (dsc *StateCollector) GetLoadAverage(ctx context.Context) (LoadAverage, error) {
+func (dsc *StateCollector) GetLoadAverageCPULoadMem(ctx context.Context) (LoadAverage, CPULoad, Mem) {
 	la := LoadAverage{}
-	out, err := exec.CommandContext(ctx, "uptime").Output()
-	if err != nil {
-		return la, err
-	}
-	elems := strings.Split(strings.Replace(string(out), ",", ".", -1), " ")
-	laOneIdx := len(elems) - 3
-	la.One, err = strconv.ParseFloat(elems[laOneIdx], 64)
-	if err != nil {
-		return la, err
-	}
-	la.Five, err = strconv.ParseFloat(elems[laOneIdx+1], 64)
-	if err != nil {
-		return la, err
-	}
-	la.Fifteen, err = strconv.ParseFloat(elems[laOneIdx+2][:len(elems[laOneIdx+2])-1], 64)
-	if err != nil {
-		return la, err
-	}
-	return la, nil
-}
-
-func (dsc *StateCollector) GetCPULoadAndMem(ctx context.Context) (CPULoad, Mem, error) {
 	cpu := CPULoad{}
 	mem := Mem{}
-	out, err := exec.CommandContext(ctx, "top", "-bn1").Output()
+	out, err := exec.CommandContext(ctx, "top", "-n", "0", "-l", "1").Output()
 	if err != nil {
-		return CPULoad{}, Mem{}, err
+		dsc.log.Warn("err executing top: ", err)
+		return la, cpu, mem
 	}
-	lines := strings.SplitN(string(out), "\n", 5)
-	cpuElems := strings.Split(strings.Replace(lines[2], ",", ".", -1), " ")
-	memElems := strings.Split(strings.Replace(lines[3], ",", ".", -1), " ")
-	if cpu.User, err = strconv.ParseFloat(cpuElems[1], 64); err != nil {
-		return CPULoad{}, Mem{}, err
+	lines := strings.Split(string(out), "\n")
+	laElems := strings.Fields(strings.TrimSpace(lines[2]))
+	cpuElems := strings.Fields(strings.TrimSpace(lines[3]))
+	memElems := strings.Fields(strings.TrimSpace(lines[6]))
+	la.One, err = strconv.ParseFloat(strings.TrimRight(laElems[2], ","), 64)
+	if err != nil {
+		dsc.log.Warn("err processing la: ", err)
+		return la, cpu, mem
 	}
-	if cpu.System, err = strconv.ParseFloat(cpuElems[4], 64); err != nil {
-		return CPULoad{}, Mem{}, err
+	la.Five, err = strconv.ParseFloat(strings.TrimRight(laElems[3], ","), 64)
+	if err != nil {
+		dsc.log.Warn("err processing la: ", err)
+		return la, cpu, mem
 	}
-	if cpu.Idle, err = strconv.ParseFloat(cpuElems[9], 64); err != nil {
-		return CPULoad{}, Mem{}, err
+	la.Fifteen, err = strconv.ParseFloat(strings.TrimRight(laElems[4], ","), 64)
+	if err != nil {
+		dsc.log.Warn("err processing la: ", err)
+		return la, cpu, mem
 	}
-	if mem.Total, err = strconv.ParseFloat(memElems[4], 64); err != nil {
-		return cpu, Mem{}, err
+	if cpu.User, err = strconv.ParseFloat(strings.TrimRight(cpuElems[2], "%"), 64); err != nil {
+		dsc.log.Warn("err collecting cpu: ", err)
+		return la, cpu, mem
 	}
-	if mem.Free, err = strconv.ParseFloat(memElems[8], 64); err != nil {
-		return cpu, Mem{}, err
+	if cpu.System, err = strconv.ParseFloat(strings.TrimRight(cpuElems[4], "%"), 64); err != nil {
+		dsc.log.Warn("err collecting cpu: ", err)
+		return la, cpu, mem
 	}
-	if mem.Used, err = strconv.ParseFloat(memElems[11], 64); err != nil {
-		return cpu, Mem{}, err
+	if cpu.Idle, err = strconv.ParseFloat(strings.TrimRight(cpuElems[6], "%"), 64); err != nil {
+		dsc.log.Warn("err collecting cpu: ", err)
+		return la, cpu, mem
 	}
-	return cpu, mem, nil
+	if mem.Free, err = parseMemValue(memElems[5], 64); err != nil {
+		dsc.log.Warn("err collecting mem: ", err)
+		return la, cpu, mem
+	}
+	if mem.Used, err = parseMemValue(memElems[1], 64); err != nil {
+		dsc.log.Warn("err collecting mem: ", err)
+		return la, cpu, mem
+	}
+	mem.Total = mem.Used + mem.Free
+	return la, cpu, mem
+}
+
+func parseMemValue(s string, bitSize int) (float64, error) {
+	val, scale := s[:len(s)-1], s[len(s)-1]
+	result, err := strconv.ParseFloat(val, bitSize)
+	if err != nil {
+		return 0, err
+	}
+	switch scale {
+	case 'M':
+		return result, nil
+	case 'G':
+		return result * 1024, nil
+	case 'K':
+		return math.Round(10 * result / 1024) / 10, nil
+	default:
+		return 0, fmt.Errorf("unknown symbols %s in %s", string(scale), s)
+	}
 }

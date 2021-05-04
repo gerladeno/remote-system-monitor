@@ -24,7 +24,7 @@ services:
       dockerfile: build/client/Dockerfile
     networks:
       - monitor
-    entrypoint: [ "./client", "-p", "3003", "-h", "monitor", "-i", "0002", "-m", "2", "-n", "10" ]
+    entrypoint: [ "./client", "-p", "3003", "-h", "monitor", "-i", "0002", "-m", "10", "-n", "2" ]
     depends_on:
       - monitor
     restart: on-failure

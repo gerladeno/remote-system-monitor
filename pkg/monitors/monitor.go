@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const initialWindowLengthSeconds = 5
+const defaultWindowLengthSeconds = 5
 
 var ErrNotCalculated = errors.New("err this average is not yet calculated")
 
@@ -34,7 +34,7 @@ func GetOsMonitor(log *logrus.Logger, goos string) (*OsMonitor, error) {
 	monitor := OsMonitor{
 		log:            log.WithField("system", "monitor"),
 		stateCollector: stateContainer,
-		maxM:           initialWindowLengthSeconds,
+		maxM:           defaultWindowLengthSeconds,
 		averages:       make(map[int]*State),
 		avgRequired:    make(map[int]int),
 	}
@@ -77,9 +77,8 @@ func (om *OsMonitor) Run(ctx context.Context) {
 					}
 				}
 			}
-			om.mx.Unlock()
-
 			om.traceLog(startedCollect, startedCalculate)
+			om.mx.Unlock()
 		}
 	}
 }
@@ -126,17 +125,16 @@ func (om *OsMonitor) RemoveMAverage(m int) {
 			delete(om.avgRequired, m)
 			delete(om.averages, m)
 
-			// not sure if it's necessary
 			max := 0
 			for k := range om.avgRequired {
 				if k > max {
 					max = k
 				}
 			}
-			if max > initialWindowLengthSeconds {
+			if max > defaultWindowLengthSeconds {
 				om.maxM = max
 			} else {
-				om.maxM = initialWindowLengthSeconds
+				om.maxM = defaultWindowLengthSeconds
 			}
 		}
 	}

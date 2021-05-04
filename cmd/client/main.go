@@ -33,7 +33,7 @@ func main() {
 	log := logging.GetLogger("DEBUG")
 	client, cc, err := StartClient(serverHost, serverPort)
 	if err != nil {
-		panic(err)
+		log.Fatal("err starting client: ",err)
 	}
 	defer func() {
 		err := cc.Close()

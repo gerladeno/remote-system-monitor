@@ -1,36 +1,96 @@
 package monitors
 
-//Not really a unit test atm
-//func TestRPCServer(t *testing.T) {
-//	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-//	defer cancel()
-//	log := logrus.New()
-//	monitor, err := GetOsMonitor(log, "linux")
-//	go func() {
-//		monitor.Run(ctx)
-//	}()
-//	require.NoError(t, err)
-//	require.Len(t, monitor.avgRequired, 0)
-//	require.Len(t, monitor.averages, 0)
-//
-//	monitor.AddMAverage(4)
-//	require.Len(t, monitor.avgRequired, 1)
-//	require.Len(t, monitor.averages, 0)
-//
-//	time.Sleep(6 * time.Second)
-//	require.Len(t, monitor.averages, 1)
-//
-//	monitor.AddMAverage(5)
-//	time.Sleep(2 * time.Second)
-//	require.Len(t, monitor.avgRequired, 2)
-//	require.Len(t, monitor.averages, 2)
-//
-//
-//	time.Sleep(1 * time.Second)
-//	monitor.AddMAverage(10)
-//	require.Len(t, monitor.avgRequired, 3)
-//	require.Len(t, monitor.averages, 2)
-//
-//	time.Sleep(4 * time.Second)
-//	require.Len(t, monitor.averages, 3)
-//}
+import (
+	"context"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
+	"sync"
+	"testing"
+	"time"
+)
+
+func TestOsMonitor_AddRemoveMAverage(t *testing.T) {
+	monitor, err := GetOsMonitor(logrus.New(), "linux")
+	require.NoError(t, err)
+	require.Len(t, monitor.avgRequired, 0)
+	monitor.AddMAverage(4)
+	require.Len(t, monitor.avgRequired, 1)
+	monitor.AddMAverage(5)
+	require.Len(t, monitor.avgRequired, 2)
+	monitor.AddMAverage(5)
+	require.Len(t, monitor.avgRequired, 2)
+	monitor.RemoveMAverage(4)
+	require.Len(t, monitor.avgRequired, 1)
+	monitor.RemoveMAverage(5)
+	require.Len(t, monitor.avgRequired, 1)
+	monitor.RemoveMAverage(5)
+	require.Len(t, monitor.avgRequired, 0)
+}
+
+func TestOsMonitor_Concurrency(t *testing.T) {
+	monitor, err := GetOsMonitor(logrus.New(), "linux")
+	require.NoError(t, err)
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			monitor.AddMAverage(i)
+		}(i)
+	}
+	wg.Wait()
+	require.Len(t, monitor.avgRequired, 100)
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			monitor.RemoveMAverage(i)
+		}(i)
+	}
+	for i := 100; i < 200; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			monitor.AddMAverage(i)
+		}(i)
+	}
+	wg.Wait()
+	require.Len(t, monitor.avgRequired, 100)
+}
+
+func TestOsMonitor_MaxM(t *testing.T) {
+	monitor, err := GetOsMonitor(logrus.New(), "linux")
+	require.NoError(t, err)
+	require.Equal(t, monitor.maxM, defaultWindowLengthSeconds)
+	monitor.AddMAverage(defaultWindowLengthSeconds)
+	require.Equal(t, monitor.maxM, defaultWindowLengthSeconds)
+	monitor.AddMAverage(defaultWindowLengthSeconds + 10)
+	require.Equal(t, monitor.maxM, defaultWindowLengthSeconds+10)
+}
+
+func TestOsMonitor_Run(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	log := logrus.New()
+	monitor, err := GetOsMonitor(log, "linux")
+	require.NoError(t, err)
+	go func() {
+		monitor.Run(ctx)
+	}()
+	time.Sleep(time.Second)
+	monitor.mx.Lock()
+	require.Len(t, monitor.avgRequired, 0)
+	require.Len(t, monitor.averages, 0)
+	monitor.mx.Unlock()
+
+	monitor.AddMAverage(4)
+	time.Sleep(4 * time.Second)
+	monitor.mx.Lock()
+	require.True(t, len(monitor.states) > 0 )
+	require.Len(t, monitor.avgRequired, 1)
+	require.Len(t, monitor.averages, 1)
+	monitor.mx.Unlock()
+}
