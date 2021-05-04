@@ -7,8 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-
-  test:
+  verify:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -16,10 +15,13 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.16
-    
-    - name: Linter
-      run: golangci-lint run ./...
+        go-version: ^1.16
+
+    - name: Linters
+      uses: golangci/golangci-lint-action@v2
+      with:
+        version: v1.37
+        working-directory: ${{ env.BRANCH }}
     
     - name: TestUnitShort
       run: go test ./... -race -count 100 -short -v
@@ -28,6 +30,7 @@ jobs:
       run: go test ./... -race -v
 
   build:
+    needs: verify
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
