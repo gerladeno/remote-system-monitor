@@ -4,12 +4,13 @@ package monitors
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
 	"math"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 )
 
 type StateCollector struct {
@@ -116,9 +117,9 @@ func (lsc *StateCollector) GetCPULoad(ctx context.Context) CPULoad {
 		return cpu
 	}
 	sum := float64(user + nice + system + idle + iowait + irq + softirq)
-	cpu.User = math.Round(float64(user) / sum * 1000) / 10
-	cpu.System = math.Round(float64(system) / sum * 1000) / 10
-	cpu.Idle = math.Round(float64(idle) / sum * 1000) / 10
+	cpu.User = math.Round(float64(user)/sum*1000) / 10
+	cpu.System = math.Round(float64(system)/sum*1000) / 10
+	cpu.Idle = math.Round(float64(idle)/sum*1000) / 10
 	return cpu
 }
 
@@ -140,16 +141,16 @@ func (lsc *StateCollector) GetMem(ctx context.Context) Mem {
 		lsc.log.Warn("err processing mem: ", err)
 		return mem
 	}
-	mem.Total = math.Round(10 * tmp / 1024) / 10
+	mem.Total = math.Round(10*tmp/1024) / 10
 	if tmp, err = strconv.ParseFloat(memElems[2], 64); err != nil {
 		lsc.log.Warn("err processing mem: ", err)
 		return mem
 	}
-	mem.Used = math.Round(10 * tmp / 1024) / 10
+	mem.Used = math.Round(10*tmp/1024) / 10
 	if tmp, err = strconv.ParseFloat(memElems[3], 64); err != nil {
 		lsc.log.Warn("err processing mem: ", err)
 		return mem
 	}
-	mem.Free = math.Round(10 * tmp / 1024) / 10
+	mem.Free = math.Round(10*tmp/1024) / 10
 	return mem
 }

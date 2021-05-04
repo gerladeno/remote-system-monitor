@@ -8,6 +8,7 @@ package monitorApiv1
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -73,8 +74,7 @@ type SignUpHandlerServer interface {
 }
 
 // UnimplementedSignUpHandlerServer should be embedded to have forward compatible implementations.
-type UnimplementedSignUpHandlerServer struct {
-}
+type UnimplementedSignUpHandlerServer struct{}
 
 func (UnimplementedSignUpHandlerServer) SignUp(*SignUpRequest, SignUpHandler_SignUpServer) error {
 	return status.Errorf(codes.Unimplemented, "method SignUp not implemented")

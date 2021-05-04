@@ -2,14 +2,15 @@ package api
 
 import (
 	"context"
+	"net"
+	"strconv"
+	"time"
+
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"net"
 	"remote-system-monitor/pkg/api/monitorApiv1"
 	"remote-system-monitor/pkg/monitors"
-	"strconv"
-	"time"
 )
 
 //go:generate protoc -I=proto/ proto/signup_v1.proto --go_out=. --go-grpc_out=require_unimplemented_servers=false:.

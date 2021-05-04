@@ -7,10 +7,11 @@
 package monitorApiv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -433,15 +434,18 @@ func file_signup_v1_proto_rawDescGZIP() []byte {
 	return file_signup_v1_proto_rawDescData
 }
 
-var file_signup_v1_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_signup_v1_proto_goTypes = []interface{}{
-	(*SignUpRequest)(nil),  // 0: monitorApiv1.SignUpRequest
-	(*SignUpResponse)(nil), // 1: monitorApiv1.SignUpResponse
-	(*State)(nil),          // 2: monitorApiv1.State
-	(*LoadAverage)(nil),    // 3: monitorApiv1.LoadAverage
-	(*CPULoad)(nil),        // 4: monitorApiv1.CPULoad
-	(*Mem)(nil),            // 5: monitorApiv1.Mem
-}
+var (
+	file_signup_v1_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+	file_signup_v1_proto_goTypes  = []interface{}{
+		(*SignUpRequest)(nil),  // 0: monitorApiv1.SignUpRequest
+		(*SignUpResponse)(nil), // 1: monitorApiv1.SignUpResponse
+		(*State)(nil),          // 2: monitorApiv1.State
+		(*LoadAverage)(nil),    // 3: monitorApiv1.LoadAverage
+		(*CPULoad)(nil),        // 4: monitorApiv1.CPULoad
+		(*Mem)(nil),            // 5: monitorApiv1.Mem
+	}
+)
+
 var file_signup_v1_proto_depIdxs = []int32{
 	2, // 0: monitorApiv1.SignUpResponse.State:type_name -> monitorApiv1.State
 	3, // 1: monitorApiv1.State.LoadAverage:type_name -> monitorApiv1.LoadAverage

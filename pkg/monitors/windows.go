@@ -4,11 +4,12 @@ package monitors
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 )
 
 type StateCollector struct {

@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 const defaultWindowLengthSeconds = 5
@@ -104,7 +105,7 @@ func (om *OsMonitor) AddMAverage(m int) {
 	defer om.mx.Unlock()
 	_, ok := om.avgRequired[m]
 	if ok {
-		om.avgRequired[m] += 1
+		om.avgRequired[m]++
 	} else {
 		om.avgRequired[m] = 1
 	}
@@ -118,24 +119,25 @@ func (om *OsMonitor) RemoveMAverage(m int) {
 	om.mx.Lock()
 	defer om.mx.Unlock()
 	_, ok := om.avgRequired[m]
-	if ok {
-		if om.avgRequired[m] > 1 {
-			om.avgRequired[m] -= 1
-		} else {
-			delete(om.avgRequired, m)
-			delete(om.averages, m)
+	if !ok {
+		return
+	}
+	if om.avgRequired[m] > 1 {
+		om.avgRequired[m]--
+	} else {
+		delete(om.avgRequired, m)
+		delete(om.averages, m)
 
-			max := 0
-			for k := range om.avgRequired {
-				if k > max {
-					max = k
-				}
+		max := 0
+		for k := range om.avgRequired {
+			if k > max {
+				max = k
 			}
-			if max > defaultWindowLengthSeconds {
-				om.maxM = max
-			} else {
-				om.maxM = defaultWindowLengthSeconds
-			}
+		}
+		if max > defaultWindowLengthSeconds {
+			om.maxM = max
+		} else {
+			om.maxM = defaultWindowLengthSeconds
 		}
 	}
 }

@@ -2,11 +2,12 @@ package monitors
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOsMonitor_AddRemoveMAverage(t *testing.T) {
@@ -89,7 +90,7 @@ func TestOsMonitor_Run(t *testing.T) {
 	monitor.AddMAverage(4)
 	time.Sleep(4 * time.Second)
 	monitor.mx.Lock()
-	require.True(t, len(monitor.states) > 0 )
+	require.True(t, len(monitor.states) > 0)
 	require.Len(t, monitor.avgRequired, 1)
 	require.Len(t, monitor.averages, 1)
 	monitor.mx.Unlock()

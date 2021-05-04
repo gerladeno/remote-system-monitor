@@ -5,12 +5,13 @@ package monitors
 import (
 	"context"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"math"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 )
 
 type StateCollector struct {
@@ -97,7 +98,7 @@ func parseMemValue(s string, bitSize int) (float64, error) {
 	case 'G':
 		return result * 1024, nil
 	case 'K':
-		return math.Round(10 * result / 1024) / 10, nil
+		return math.Round(10*result/1024) / 10, nil
 	default:
 		return 0, fmt.Errorf("unknown symbols %s in %s", string(scale), s)
 	}
