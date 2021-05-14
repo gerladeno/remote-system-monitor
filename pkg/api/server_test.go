@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"remote-system-monitor/pkg/api/monitorApiv1"
+	"remote-system-monitor/pkg/monitors"
 	"strconv"
 	"sync"
 	"testing"
@@ -10,8 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
-	"remote-system-monitor/pkg/api/monitorApiv1"
-	"remote-system-monitor/pkg/monitors"
 )
 
 func TestRPCServer_SignUp(t *testing.T) {

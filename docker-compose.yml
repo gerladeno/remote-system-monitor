@@ -28,5 +28,17 @@ services:
     depends_on:
       - monitor
     restart: on-failure
+  integration-tests:
+    build:
+      context: .
+      dockerfile: build/integration/Dockerfile
+    environment:
+      HOST_DOCKER_INTERNAL: monitor
+      PORT: 3003
+    networks:
+      - monitor
+    depends_on:
+      - monitor
+    restart: on-failure
 networks:
   monitor:

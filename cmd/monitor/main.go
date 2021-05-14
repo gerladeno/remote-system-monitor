@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"sync"
-	"syscall"
-
 	"remote-system-monitor/pkg/api"
 	"remote-system-monitor/pkg/logging"
 	"remote-system-monitor/pkg/monitors"
+	"sync"
+	"syscall"
 )
 
 var (

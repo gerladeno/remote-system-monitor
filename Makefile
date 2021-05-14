@@ -7,7 +7,7 @@ gen:
 build_all: gen
 	./make.sh $(version)
 
-test:
+test: build_all
 	go test ./pkg/monitors/ -race -count 100 -short
 	go test ./pkg/monitors/ ./pkg/api/ -race
 
@@ -26,5 +26,12 @@ client3:
 docker_build: gen
 	docker-compose build
 
-docker_run:
-	docker-compose up
+docker_run: docker_build
+	docker-compose up -d monitor
+
+docker_run_clients: docker_run
+	docker-compose up client1 client2 client3
+
+integration_tests: docker_run
+	docker-compose run integration-tests
+	docker-compose down

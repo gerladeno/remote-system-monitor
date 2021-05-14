@@ -6,12 +6,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"remote-system-monitor/pkg/api/monitorApiv1"
+	"remote-system-monitor/pkg/logging"
 	"strconv"
 	"time"
 
 	"google.golang.org/grpc"
-	"remote-system-monitor/pkg/api/monitorApiv1"
-	"remote-system-monitor/pkg/logging"
 )
 
 var (
