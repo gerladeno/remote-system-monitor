@@ -16,23 +16,39 @@ type StateCollector struct {
 	log *logrus.Logger
 }
 
-func (wsc *StateCollector) GetCurrentState(ctx context.Context) *State {
+func (wsc *StateCollector) GetCurrentState(ctx context.Context, metrics *MetricsPresent) *State {
 	var (
-		la LoadAverage
+		la  *LoadAverage
+		cpu *CPULoad
+		mem *Mem
 		wg sync.WaitGroup
 	)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var err error
-		if la, err = wsc.GetLoadAverage(ctx); err != nil {
-			wsc.log.Warn("err getting loadAverage: ", err)
-		}
-	}()
-	return &State{LoadAverage: la}
+	if metrics.la {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			la = wsc.getLoadAverage(ctx)
+		}()
+	}
+	if metrics.cpu {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cpu = &CPULoad{}
+		}()
+	}
+	if metrics.mem {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			mem = &Mem{}
+		}()
+	}
+	wg.Wait()
+	return &State{LoadAverage: la, CPULoad: cpu, Mem: mem}
 }
 
-func (wcs *StateCollector) GetLoadAverage(ctx context.Context) (LoadAverage, error) {
+func (wsc *StateCollector) getLoadAverage(ctx context.Context) *LoadAverage {
 	LOADAVG_FACTOR_1F := 0.9200444146293232478931553241
 	LOADAVG_FACTOR_5F := 0.6592406302004437462547604110
 	LOADAVG_FACTOR_15F := 0.2865047968601901003248854266
@@ -41,15 +57,17 @@ func (wcs *StateCollector) GetLoadAverage(ctx context.Context) (LoadAverage, err
 	var load_avg_5m float64 = 0
 	var load_avg_15m float64 = 0
 
-	la := LoadAverage{}
+	la := &LoadAverage{}
 	out, err := exec.CommandContext(ctx, "cmd", "/k", "wmic cpu get LoadPercentage -value").Output()
 	if err != nil {
-		return la, err
+		wsc.log.Warn("err getting loadAverage: ", err)
+		return la
 	}
 
 	currentLoad, err := strconv.ParseFloat(strings.Trim(string(out[21:23]), " "), 64)
 	if err != nil {
-		return la, err
+		wsc.log.Warn("err getting loadAverage: ", err)
+		return la
 	}
 
 	load_avg_1m = load_avg_1m*LOADAVG_FACTOR_1F + currentLoad*(1.0-LOADAVG_FACTOR_1F)
@@ -59,5 +77,5 @@ func (wcs *StateCollector) GetLoadAverage(ctx context.Context) (LoadAverage, err
 	la.One = load_avg_1m
 	la.Five = load_avg_5m
 	la.Fifteen = load_avg_15m
-	return la, nil
+	return la
 }

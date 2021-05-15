@@ -22,7 +22,8 @@ func TestRPCServer_SignUp(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	log := logrus.New()
-	monitor, err := monitors.GetOsMonitor(log, "linux")
+	metrics := monitors.InitMetricPresent(nil)
+	monitor, err := monitors.GetOsMonitor(log, "linux", metrics)
 	require.NoError(t, err)
 	r := NewRPCServer(log, monitor, port, "tcp", "version")
 	var wg sync.WaitGroup

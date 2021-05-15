@@ -88,22 +88,34 @@ LOOP:
 }
 
 func state2Pb(state *monitors.State) *monitorApiv1.State {
-	pbState := monitorApiv1.State{
-		LoadAverage: &monitorApiv1.LoadAverage{
+	la := &monitorApiv1.LoadAverage{}
+	cpu := &monitorApiv1.CPULoad{}
+	mem := &monitorApiv1.Mem{}
+	if state.LoadAverage != nil {
+		la = &monitorApiv1.LoadAverage{
 			One:     state.LoadAverage.One,
 			Five:    state.LoadAverage.Five,
 			Fifteen: state.LoadAverage.Fifteen,
-		},
-		CPULoad: &monitorApiv1.CPULoad{
+		}
+	}
+	if state.CPULoad != nil {
+		cpu = &monitorApiv1.CPULoad{
 			User:   state.CPULoad.User,
 			System: state.CPULoad.System,
 			Idle:   state.CPULoad.Idle,
-		},
-		Mem: &monitorApiv1.Mem{
+		}
+	}
+	if state.Mem != nil {
+		mem = &monitorApiv1.Mem{
 			Total: state.Mem.Total,
 			Free:  state.Mem.Free,
 			Used:  state.Mem.Used,
-		},
+		}
+	}
+	pbState := monitorApiv1.State{
+		LoadAverage: la,
+		CPULoad:     cpu,
+		Mem:         mem,
 	}
 	return &pbState
 }

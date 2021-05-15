@@ -11,7 +11,8 @@ import (
 )
 
 func TestOsMonitor_AddRemoveMAverage(t *testing.T) {
-	monitor, err := GetOsMonitor(logrus.New(), "linux")
+	metrics := MetricsPresent{true, true, true}
+	monitor, err := GetOsMonitor(logrus.New(), "linux", &metrics)
 	require.NoError(t, err)
 	require.Len(t, monitor.avgRequired, 0)
 	monitor.AddMAverage(4)
@@ -29,7 +30,8 @@ func TestOsMonitor_AddRemoveMAverage(t *testing.T) {
 }
 
 func TestOsMonitor_Concurrency(t *testing.T) {
-	monitor, err := GetOsMonitor(logrus.New(), "linux")
+	metrics := MetricsPresent{true, true, true}
+	monitor, err := GetOsMonitor(logrus.New(), "linux", &metrics)
 	require.NoError(t, err)
 	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {
@@ -60,7 +62,8 @@ func TestOsMonitor_Concurrency(t *testing.T) {
 }
 
 func TestOsMonitor_MaxM(t *testing.T) {
-	monitor, err := GetOsMonitor(logrus.New(), "linux")
+	metrics := MetricsPresent{true, true, true}
+	monitor, err := GetOsMonitor(logrus.New(), "linux", &metrics)
 	require.NoError(t, err)
 	require.Equal(t, monitor.maxM, defaultWindowLengthSeconds)
 	monitor.AddMAverage(defaultWindowLengthSeconds)
@@ -76,7 +79,8 @@ func TestOsMonitor_Run(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	log := logrus.New()
-	monitor, err := GetOsMonitor(log, "linux")
+	metrics := MetricsPresent{true, true, true}
+	monitor, err := GetOsMonitor(log, "linux", &metrics)
 	require.NoError(t, err)
 	go func() {
 		monitor.Run(ctx)

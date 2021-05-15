@@ -17,34 +17,40 @@ type StateCollector struct {
 	log *logrus.Logger
 }
 
-func (lsc *StateCollector) GetCurrentState(ctx context.Context) *State {
+func (lsc *StateCollector) GetCurrentState(ctx context.Context, metrics *MetricsPresent) *State {
 	var (
-		la  LoadAverage
-		cpu CPULoad
-		mem Mem
+		la  *LoadAverage
+		cpu *CPULoad
+		mem *Mem
 		wg  sync.WaitGroup
 	)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		la = lsc.GetLoadAverage(ctx)
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		cpu = lsc.GetCPULoad(ctx)
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		mem = lsc.GetMem(ctx)
-	}()
+	if metrics.la {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			la = lsc.getLoadAverage(ctx)
+		}()
+	}
+	if metrics.cpu {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cpu = lsc.getCPULoad(ctx)
+		}()
+	}
+	if metrics.mem {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			mem = lsc.getMem(ctx)
+		}()
+	}
 	wg.Wait()
 	return &State{LoadAverage: la, CPULoad: cpu, Mem: mem}
 }
 
-func (lsc *StateCollector) GetLoadAverage(ctx context.Context) LoadAverage {
-	la := LoadAverage{}
+func (lsc *StateCollector) getLoadAverage(ctx context.Context) *LoadAverage {
+	la := &LoadAverage{}
 	out, err := exec.CommandContext(ctx, "cat", "/proc/loadavg").Output()
 	if err != nil {
 		lsc.log.Warn("err processing la: ", err)
@@ -69,8 +75,8 @@ func (lsc *StateCollector) GetLoadAverage(ctx context.Context) LoadAverage {
 	return la
 }
 
-func (lsc *StateCollector) GetCPULoad(ctx context.Context) CPULoad {
-	cpu := CPULoad{}
+func (lsc *StateCollector) getCPULoad(ctx context.Context) *CPULoad {
+	cpu := &CPULoad{}
 	out, err := exec.CommandContext(ctx, "head", "-n1", "/proc/stat").Output()
 	if err != nil {
 		lsc.log.Warn("err processing cpu: ", err)
@@ -123,8 +129,8 @@ func (lsc *StateCollector) GetCPULoad(ctx context.Context) CPULoad {
 	return cpu
 }
 
-func (lsc *StateCollector) GetMem(ctx context.Context) Mem {
-	mem := Mem{}
+func (lsc *StateCollector) getMem(ctx context.Context) *Mem {
+	mem := &Mem{}
 	out, err := exec.CommandContext(ctx, "free").Output()
 	if err != nil {
 		lsc.log.Warn("err processing mem: ", err)

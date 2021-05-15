@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -18,6 +19,7 @@ var (
 	serverPort int
 	logLevel   string
 	network    string
+	suppress   string
 	version    = "0.0.0"
 	goos       = "linux"
 )
@@ -26,6 +28,7 @@ func init() {
 	flag.IntVar(&serverPort, "p", 3000, "port to start gRPC server")
 	flag.StringVar(&logLevel, "l", "TRACE", "log level. Accepted values: panic, fatal, error, warn, warning, info, debug, trace. Case insensitive.")
 	flag.StringVar(&network, "n", "tcp", "specify protocol for server to run: tcp (default) or udp")
+	flag.StringVar(&suppress, "s", "", fmt.Sprintf("specify comma-separated list of metrics to exclude them. Accepted values: %s", strings.Join(monitors.AvailableMetrics, ", ")))
 }
 
 func main() {
@@ -37,7 +40,8 @@ func main() {
 	}
 
 	log := logging.GetLogger(logLevel)
-	osMonitor, err := monitors.GetOsMonitor(log, goos)
+	metrics := monitors.InitMetricPresent(strings.Split(suppress, ","))
+	osMonitor, err := monitors.GetOsMonitor(log, goos, metrics)
 	if err != nil {
 		log.Fatalf("err initing monitor: %s", err)
 	}

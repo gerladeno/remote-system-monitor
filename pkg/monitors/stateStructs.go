@@ -2,16 +2,17 @@ package monitors
 
 import (
 	"fmt"
+	"reflect"
 )
 
 type State struct {
-	LoadAverage LoadAverage
-	CPULoad     CPULoad
-	Mem         Mem
+	LoadAverage *LoadAverage
+	CPULoad     *CPULoad
+	Mem         *Mem
 }
 
 func (s *State) String() string {
-	return fmt.Sprintf("LoadAvg [%s] CPU [%s] Mem [%s]", s.LoadAverage.String(), s.CPULoad.String(), s.Mem.String())
+	return fmt.Sprintf("%s %s %s", SafeString(s.LoadAverage), SafeString(s.CPULoad), SafeString(s.Mem))
 }
 
 type LoadAverage struct {
@@ -21,7 +22,7 @@ type LoadAverage struct {
 }
 
 func (la *LoadAverage) String() string {
-	return fmt.Sprintf("One: %g Five: %g Fifteen: %g", la.One, la.Five, la.Fifteen)
+	return fmt.Sprintf("LoadAvg [One: %g Five: %g Fifteen: %g]", la.One, la.Five, la.Fifteen)
 }
 
 type CPULoad struct {
@@ -31,7 +32,7 @@ type CPULoad struct {
 }
 
 func (cpu *CPULoad) String() string {
-	return fmt.Sprintf("User: %g%%%% System: %g%%%% Idle: %g%%%%", cpu.User, cpu.System, cpu.Idle)
+	return fmt.Sprintf("CPU [User: %g%%%% System: %g%%%% Idle: %g%%%%]", cpu.User, cpu.System, cpu.Idle)
 }
 
 type Mem struct {
@@ -41,5 +42,12 @@ type Mem struct {
 }
 
 func (m *Mem) String() string {
-	return fmt.Sprintf("Total MB: %g Free MB: %g Used MB: %g", m.Total, m.Free, m.Used)
+	return fmt.Sprintf("Mem [Total MB: %g Free MB: %g Used MB: %g]", m.Total, m.Free, m.Used)
+}
+
+func SafeString(stringer fmt.Stringer) string {
+	if stringer == nil || (reflect.ValueOf(stringer).Kind() == reflect.Ptr && reflect.ValueOf(stringer).IsNil()) {
+		return ""
+	}
+	return stringer.String()
 }
