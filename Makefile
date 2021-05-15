@@ -26,12 +26,12 @@ client3:
 docker_build: gen
 	docker-compose build
 
-docker_run: docker_build
+docker_up: docker_build
 	docker-compose up -d monitor
 
-docker_run_clients: docker_run
+docker_run_clients: docker_up
 	docker-compose up client1 client2 client3
 
-integration_tests: docker_run
+integration_tests: docker_up
 	docker-compose run integration-tests
 	docker-compose down

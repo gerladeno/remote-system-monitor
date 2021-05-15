@@ -73,13 +73,13 @@ func findString(slice []string, val string) bool {
 
 func InitMetricPresent(suppressed []string) *MetricsPresent {
 	metrics := MetricsPresent{}
-	if findString(suppressed, "la") {
+	if !findString(suppressed, "la") {
 		metrics.la = true
 	}
-	if findString(suppressed, "mem") {
+	if !findString(suppressed, "mem") {
 		metrics.mem = true
 	}
-	if findString(suppressed, "cpu") {
+	if !findString(suppressed, "cpu") {
 		metrics.cpu = true
 	}
 	return &metrics
