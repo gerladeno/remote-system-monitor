@@ -4,13 +4,14 @@ package integration
 
 import (
 	"context"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"os"
-	"remote-system-monitor/pkg/api/monitorApiv1"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"remote-system-monitor/pkg/api/monitorApiv1"
 )
 
 func StartClient(host string, port int) (monitorApiv1.SignUpHandlerClient, *grpc.ClientConn, error) {
@@ -23,6 +24,7 @@ func StartClient(host string, port int) (monitorApiv1.SignUpHandlerClient, *grpc
 }
 
 func TestMonitor(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		period int32
@@ -36,7 +38,7 @@ func TestMonitor(t *testing.T) {
 	}
 	var (
 		port int
-		err error
+		err  error
 	)
 	portStr := os.Getenv("PORT")
 	if portStr == "" {
