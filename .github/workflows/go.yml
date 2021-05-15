@@ -24,10 +24,10 @@ jobs:
         working-directory: ${{ env.BRANCH }}
     
     - name: TestUnitShort
-      run: go test ./... -race -count 100 -short -v
+      run: go test ./pkg/monitors/ -race -count 100 -short -v
       
     - name: TestUnitAll
-      run: go test ./... -race -v
+      run: go test ./pkg/monitors/ ./pkg/api/ -race -v
 
   build:
     needs: verify
